@@ -1,0 +1,25 @@
+server:
+  port: 8080 
+
+spring:
+  application:
+    name: booking-system
+    
+  datasource:
+    url: jdbc:postgresql://localhost:5432/booking_db
+    username: myuser     
+    password: mypassword 
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true 
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  mvc:
+    throw-exception-if-no-handler-found: true
