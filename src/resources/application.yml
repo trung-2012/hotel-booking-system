@@ -23,3 +23,6 @@ spring:
 
   mvc:
     throw-exception-if-no-handler-found: true
+jwt:
+  secret: day-la-chuoi-bi-mat-rat-dai-de-tao-ra-token-jwt-cho-he-thong-dat-phong
+  expiration: 86400000 # Thời gian sống của token: 1 ngày (tính bằng mili-giây)
