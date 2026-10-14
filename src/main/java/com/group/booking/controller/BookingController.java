@@ -5,6 +5,7 @@ import com.group.booking.dto.response.BookingResponseDTO;
 import com.group.booking.service.BookingService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -36,4 +37,28 @@ public class BookingController {
 
         return bookingService.getBookingsByUser(email);
     }
+    // GET /api/bookings/{id} - Get booking details
+    @GetMapping("/{id}")
+    public BookingResponseDTO getBookingById(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        String email = authentication.getName();
+
+        return bookingService.getBookingById(email, id);
+    }
+
+    // DELETE /api/bookings/{id} - Cancel booking
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancelBooking(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        String email = authentication.getName();
+
+        bookingService.cancelBooking(email, id);
+
+        return ResponseEntity.noContent().build();
+    }
+
 }

@@ -9,6 +9,7 @@ import com.group.booking.repository.BookingRepository;
 import com.group.booking.repository.RoomRepository;
 import com.group.booking.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import com.group.booking.exception.BookingNotFoundException;
 
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -88,4 +89,28 @@ public class BookingService {
 
         return response;
     }
+
+    // Get booking details (GET /api/bookings/{id})
+    public BookingResponseDTO getBookingById(String email, Long bookingId) {
+        Booking booking = findOwnedBooking(email, bookingId);
+        return toResponseDTO(booking);
+    }
+
+    // Cancel booking (DELETE /api/bookings/{id})
+    public void cancelBooking(String email, Long bookingId) {
+        Booking booking = findOwnedBooking(email, bookingId);
+        bookingRepository.delete(booking);
+    }
+        private Booking findOwnedBooking(String email, Long bookingId) {
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(BookingNotFoundException::new);
+
+        if (!email.equals(booking.getUser().getEmail())) {
+                throw new BookingNotFoundException();
+        }
+
+        return booking;
+        }
+
 }
