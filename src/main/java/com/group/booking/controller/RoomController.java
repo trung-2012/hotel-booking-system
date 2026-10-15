@@ -21,6 +21,11 @@ public class RoomController {
         return ResponseEntity.ok(roomService.getAllRooms());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<RoomResponseDTO> getRoomById(@PathVariable long id) {
+        return ResponseEntity.ok(roomService.getRoomById(id));
+    }
+
     @PostMapping
     public ResponseEntity<RoomResponseDTO> create(@RequestBody RoomRequestDTO dto) {
         return ResponseEntity.ok(roomService.createRoom(dto));

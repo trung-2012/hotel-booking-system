@@ -23,6 +23,12 @@ public class RoomService {
                 .collect(Collectors.toList());
     }
 
+    public RoomResponseDTO getRoomById(long id) {
+        Room room = roomRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng có Id: " + id));
+        return toDTO(room);
+    }
+
     public RoomResponseDTO createRoom(RoomRequestDTO dto) {
         if (roomRepository.existsByRoomNumber(dto.getRoomNumber())) {
             throw new RuntimeException("Số phòng đã tồn tại!");
