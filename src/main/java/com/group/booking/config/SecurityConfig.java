@@ -24,7 +24,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Mở chức năng Login/Register
                 .requestMatchers("/api/rooms").permitAll()   // Mở chức năng xem danh sách phòng
-                .anyRequest().authenticated()                // Bất kỳ API nào khác (VD: Đặt phòng) bắt buộc phải có Token
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // Mở khóa cho giao diện Swagger
+                .anyRequest().authenticated()                // Bất kỳ API nào khác bắt buộc phải có Token
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
