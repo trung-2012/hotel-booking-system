@@ -1,5 +1,6 @@
 package com.group.booking.controller;
 
+import com.group.booking.dto.request.AuthRequestDTO;
 import com.group.booking.model.User;
 import com.group.booking.repository.UserRepository;
 import com.group.booking.security.JwtUtil;
@@ -21,8 +22,16 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user) {
-        // Đơn giản hóa: Không kiểm tra trùng email để code ngắn gọn
+    public ResponseEntity<?> register(@RequestBody AuthRequestDTO dto) {
+        //check mail có trùng không
+        if(userRepository.findByEmail(dto.getEmail()).isPresent()){
+            return ResponseEntity.badRequest().body(Map.of("error", "Email đã tồn tại"));
+        }
+
+        User user = new User();
+        user.setEmail(dto.getEmail());
+        user.setPassword(dto.getPassword());
+
         userRepository.save(user);
         return ResponseEntity.ok(Map.of("message", "Đăng ký thành công"));
     }
