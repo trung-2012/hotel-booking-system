@@ -3,6 +3,7 @@ package com.group.booking.controller;
 import com.group.booking.dto.request.RoomRequestDTO;
 import com.group.booking.dto.response.RoomResponseDTO;
 import com.group.booking.service.RoomService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +28,7 @@ public class RoomController {
     }
 
     @PostMapping
-    public ResponseEntity<RoomResponseDTO> create(@RequestBody RoomRequestDTO dto) {
+    public ResponseEntity<RoomResponseDTO> create(@Valid @RequestBody RoomRequestDTO dto) {
         return ResponseEntity.ok(roomService.createRoom(dto));
     }
 

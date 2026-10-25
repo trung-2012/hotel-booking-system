@@ -40,11 +40,22 @@ public class BookingService {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Room not found"));
 
+        if(request.getCheckInDate().isBefore(java.time.LocalDate.now())) {
+            throw  new IllegalArgumentException("checkInDate must not be in the past");
+        }
+
         if (request.getCheckInDate() == null ||
                 request.getCheckOutDate() == null ||
                 !request.getCheckOutDate().isAfter(request.getCheckInDate())) {
             throw new IllegalArgumentException(
                     "Check-out date must be after check-in date");
+        }
+
+        boolean isBooked = bookingRepository.isRoomBooked(request.getRoomId()
+                , request.getCheckInDate(), request.getCheckOutDate());
+
+        if(isBooked) {
+            throw new IllegalArgumentException("room is already booked in this period, please choose other time!");
         }
 
         long numberOfNights = ChronoUnit.DAYS.between(

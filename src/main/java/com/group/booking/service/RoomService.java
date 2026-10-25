@@ -3,7 +3,6 @@ package com.group.booking.service;
 import com.group.booking.dto.request.RoomRequestDTO;
 import com.group.booking.dto.response.RoomResponseDTO;
 import com.group.booking.model.Room;
-import com.group.booking.model.RoomStatus;
 import com.group.booking.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,7 +37,6 @@ public class RoomService {
         room.setType(dto.getType());
         room.setPrice(dto.getPrice());
         room.setCapacity(dto.getCapacity());
-        room.setStatus(RoomStatus.AVAILABLE);
         return toDTO(roomRepository.save(room));
     }
 
@@ -56,7 +54,6 @@ public class RoomService {
         dto.setType(room.getType());
         dto.setPrice(room.getPrice());
         dto.setCapacity(room.getCapacity());
-        dto.setStatus(room.getStatus() != null ? room.getStatus().name() : null);
         return dto;
     }
 }

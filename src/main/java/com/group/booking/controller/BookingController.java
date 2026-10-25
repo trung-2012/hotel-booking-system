@@ -3,6 +3,7 @@ package com.group.booking.controller;
 import com.group.booking.dto.request.BookingRequestDTO;
 import com.group.booking.dto.response.BookingResponseDTO;
 import com.group.booking.service.BookingService;
+import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +28,7 @@ public class BookingController {
     @ApiResponse(responseCode = "200", description = "Booking created successfully")
     @PostMapping
     public BookingResponseDTO createBooking(
-            @RequestBody BookingRequestDTO request,
+            @Valid @RequestBody BookingRequestDTO request,
             Authentication authentication) {
 
         String email = authentication.getName();
