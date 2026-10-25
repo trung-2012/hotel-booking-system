@@ -5,6 +5,7 @@ import com.group.booking.model.Role;
 import com.group.booking.model.User;
 import com.group.booking.repository.UserRepository;
 import com.group.booking.security.JwtUtil;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +28,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody AuthRequestDTO dto) {
+    public ResponseEntity<?> register(@Valid @RequestBody AuthRequestDTO dto) {
         //check mail có trùng không
         if(userRepository.findByEmail(dto.getEmail()).isPresent()){
             return ResponseEntity.badRequest().body(Map.of("error", "Email đã tồn tại"));
@@ -43,7 +44,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequestDTO dto) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequestDTO dto) {
         User user = userRepository.findByEmail(dto.getEmail()).orElse(null);
 
         // dùng password encoder
