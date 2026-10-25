@@ -1,11 +1,14 @@
 package com.group.booking.controller;
 
 import com.group.booking.dto.request.AuthRequestDTO;
+import com.group.booking.model.Role;
 import com.group.booking.model.User;
 import com.group.booking.repository.UserRepository;
 import com.group.booking.security.JwtUtil;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Map;
 
@@ -15,10 +18,12 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository userRepository, JwtUtil jwtUtil) {
+    public AuthController(UserRepository userRepository, JwtUtil jwtUtil, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/register")
@@ -30,7 +35,8 @@ public class AuthController {
 
         User user = new User();
         user.setEmail(dto.getEmail());
-        user.setPassword(dto.getPassword());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setRole(Role.USER);
 
         userRepository.save(user);
         return ResponseEntity.ok(Map.of("message", "Đăng ký thành công"));
@@ -39,10 +45,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User loginRequest) {
         User user = userRepository.findByEmail(loginRequest.getEmail()).orElse(null);
-        
-        // So sánh mật khẩu trực tiếp (Không dùng hash cho đơn giản)
-        if (user != null && user.getPassword().equals(loginRequest.getPassword())) {
-            String token = jwtUtil.generateToken(user.getEmail());
+
+        // dùng password encoder
+        if(user != null && passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())){
+            String token = jwtUtil.generateToken(loginRequest.getEmail());
             return ResponseEntity.ok(Map.of("token", token));
         }
         
