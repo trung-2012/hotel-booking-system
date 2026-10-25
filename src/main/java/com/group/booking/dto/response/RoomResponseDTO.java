@@ -9,5 +9,4 @@ public class RoomResponseDTO {
     private String type;
     private Double price;
     private Integer capacity;
-    private String status;
 }

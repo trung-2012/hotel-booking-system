@@ -23,8 +23,4 @@ public class Room {
     private Double price;
 
     private Integer capacity;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RoomStatus status = RoomStatus.AVAILABLE; //AVAILABLE, BOOKED, MAINTENANCE
 }
