@@ -16,7 +16,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByUser(User user);
 
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END " +
-            "FROM Booking b WHERE b.room.id = := roomId " +
+            "FROM Booking b WHERE b.room.id = :roomId " +
             "AND (:checkIn < b.checkOutDate AND :checkOut > b.checkInDate)")
     boolean isRoomBooked (
             @Param("roomId") long roomId,
