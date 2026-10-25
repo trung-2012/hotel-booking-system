@@ -43,12 +43,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody User loginRequest) {
-        User user = userRepository.findByEmail(loginRequest.getEmail()).orElse(null);
+    public ResponseEntity<?> login(@RequestBody AuthRequestDTO dto) {
+        User user = userRepository.findByEmail(dto.getEmail()).orElse(null);
 
         // dùng password encoder
-        if(user != null && passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())){
-            String token = jwtUtil.generateToken(loginRequest.getEmail());
+        if(user != null && passwordEncoder.matches(dto.getPassword(), user.getPassword())){
+            String token = jwtUtil.generateToken(dto.getEmail());
             return ResponseEntity.ok(Map.of("token", token));
         }
         
