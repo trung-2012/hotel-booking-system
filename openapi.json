@@ -1,0 +1,624 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Hotel Booking System API — Pha 1",
+    "version": "0.0.1-SNAPSHOT",
+    "description": "Đặc tả OpenAPI tĩnh biên soạn theo mã nguồn commit 4d9e6b6 (PR #8). Không phải JSON tự sinh từ /v3/api-docs. Dùng để preview phạm vi 10 endpoint đã triển khai; trạng thái một số lỗi phụ thuộc cấu hình Spring Security."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8081",
+      "description": "Ứng dụng Spring Boot chạy cục bộ"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Đăng ký và đăng nhập"
+    },
+    {
+      "name": "Room",
+      "description": "Tra cứu và quản lý phòng"
+    },
+    {
+      "name": "Booking",
+      "description": "Đặt, xem, hủy đơn của mình"
+    }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "operationId": "register",
+        "summary": "Đăng ký tài khoản",
+        "description": "Email hợp lệ, không trùng tài khoản hiện có; mật khẩu tối thiểu 6 ký tự. Tài khoản mới nhận vai trò USER.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Dữ liệu AuthRequestDTO",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đăng ký thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email trùng hoặc dữ liệu không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "operationId": "login",
+        "summary": "Đăng nhập để lấy JWT",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "description": "Dữ liệu AuthRequestDTO",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trả về JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Email/mật khẩu không đúng định dạng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sai email hoặc mật khẩu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms": {
+      "get": {
+        "tags": [
+          "Room"
+        ],
+        "operationId": "getRooms",
+        "summary": "Danh sách phòng",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Danh sách phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoomResponseDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Room"
+        ],
+        "operationId": "createRoom",
+        "summary": "Tạo phòng (ADMIN)",
+        "description": "Chỉ ADMIN mới được tạo phòng; roomNumber phải duy nhất.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Dữ liệu RoomRequestDTO",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Phòng vừa tạo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomResponseDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu đầu vào không hợp lệ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không đủ quyền ADMIN"
+          }
+        }
+      }
+    },
+    "/api/rooms/{id}": {
+      "get": {
+        "tags": [
+          "Room"
+        ],
+        "operationId": "getRoomById",
+        "summary": "Chi tiết phòng",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID số nguyên của tài nguyên",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thông tin phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomResponseDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Room"
+        ],
+        "operationId": "deleteRoom",
+        "summary": "Xóa phòng (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID số nguyên của tài nguyên",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Xóa thành công, không có response body"
+          },
+          "403": {
+            "description": "Không đủ quyền ADMIN"
+          }
+        }
+      }
+    },
+    "/api/bookings": {
+      "post": {
+        "tags": [
+          "Booking"
+        ],
+        "operationId": "createBooking",
+        "summary": "Tạo đặt phòng",
+        "description": "Người dùng đăng nhập chọn phòng, ngày nhận/trả; ngày nhận không được ở quá khứ, ngày trả phải sau ngày nhận. Trùng khoảng thời gian trong cùng phòng bị từ chối (400). Tổng tiền = giá phòng × số đêm.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Dữ liệu BookingRequestDTO",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tạo đặt phòng thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponseDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ngày không hợp lệ hoặc khoảng thời gian đã có khách đặt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bookings/me": {
+      "get": {
+        "tags": [
+          "Booking"
+        ],
+        "operationId": "getMyBookings",
+        "summary": "Danh sách đặt phòng của tôi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Các đơn của người dùng đăng nhập",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookingResponseDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bookings/{id}": {
+      "get": {
+        "tags": [
+          "Booking"
+        ],
+        "operationId": "getBookingById",
+        "summary": "Xem đơn đặt phòng của tôi",
+        "description": "Chỉ chủ đơn được xem. Đơn không tồn tại hoặc không thuộc người dùng hiện tại đều trả 404.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID số nguyên của tài nguyên",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thông tin đơn đặt phòng",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponseDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy đơn hoặc người dùng không phải chủ đơn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Booking"
+        ],
+        "operationId": "cancelBooking",
+        "summary": "Hủy đơn đặt phòng của tôi",
+        "description": "Chỉ chủ đơn được xóa. Không tìm thấy hoặc không có quyền sở hữu đều trả 404.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID số nguyên của tài nguyên",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Hủy đơn thành công; không có response body"
+          },
+          "404": {
+            "description": "Không tìm thấy đơn hoặc người dùng không phải chủ đơn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token lấy từ POST /api/auth/login"
+      }
+    },
+    "schemas": {
+      "AuthRequestDTO": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1,
+            "example": "guest@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "writeOnly": true,
+            "example": "DemoPass123!"
+          }
+        },
+        "description": "Dùng cho đăng ký và đăng nhập."
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Đăng ký thành công"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "JWT Bearer Token"
+          }
+        }
+      },
+      "RoomRequestDTO": {
+        "type": "object",
+        "required": [
+          "roomNumber",
+          "type",
+          "price",
+          "capacity"
+        ],
+        "properties": {
+          "roomNumber": {
+            "type": "string",
+            "minLength": 1,
+            "example": "P.302"
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "example": "double"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "minimum": 0,
+            "example": 500000.0
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "example": 2
+          }
+        }
+      },
+      "RoomResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "roomNumber": {
+            "type": "string",
+            "example": "P.302"
+          },
+          "type": {
+            "type": "string",
+            "example": "double"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "example": 500000.0
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2
+          }
+        }
+      },
+      "BookingRequestDTO": {
+        "type": "object",
+        "required": [
+          "roomId",
+          "checkInDate",
+          "checkOutDate"
+        ],
+        "description": "Ngày ở dạng YYYY-MM-DD, không được ở quá khứ; ngày trả phải sau ngày nhận.",
+        "properties": {
+          "roomId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "checkInDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Không được ở quá khứ",
+            "example": "2027-01-10"
+          },
+          "checkOutDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Phải sau checkInDate",
+            "example": "2027-01-12"
+          }
+        }
+      },
+      "BookingResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 263
+          },
+          "roomId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "roomNumber": {
+            "type": "string",
+            "example": "TEST-915822"
+          },
+          "checkInDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2027-01-10"
+          },
+          "checkOutDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2027-01-12"
+          },
+          "totalPrice": {
+            "type": "number",
+            "format": "double",
+            "example": 1000000.0
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Check-out date must be after check-in date"
+          }
+        }
+      }
+    }
+  }
+}
