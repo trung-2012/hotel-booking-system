@@ -40,13 +40,18 @@ public class BookingService {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Room not found"));
 
-        if(request.getCheckInDate().isBefore(java.time.LocalDate.now())) {
-            throw  new IllegalArgumentException("checkInDate must not be in the past");
+        if (request.getCheckInDate() == null ||
+                request.getCheckOutDate() == null) {
+            throw new IllegalArgumentException(
+                    "Check-in date and check-out date are required");
         }
 
-        if (request.getCheckInDate() == null ||
-                request.getCheckOutDate() == null ||
-                !request.getCheckOutDate().isAfter(request.getCheckInDate())) {
+        if (request.getCheckInDate().isBefore(java.time.LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Check-in date must not be in the past");
+        }
+
+        if (!request.getCheckOutDate().isAfter(request.getCheckInDate())) {
             throw new IllegalArgumentException(
                     "Check-out date must be after check-in date");
         }
