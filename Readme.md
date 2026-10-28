@@ -1,167 +1,92 @@
-# Room Booking System API — Pha 1
+# Hotel Booking System — Pha 1
 
-Dịch vụ backend quản lý và đặt phòng khách sạn. Mỗi tài khoản người dùng chỉ xem, quản lý và hủy các đơn đặt phòng do chính mình tạo ra. API giao tiếp hoàn toàn bằng JSON; giao diện tài liệu Swagger UI tự động tại `/swagger-ui/index.html`, đặc tả OpenAPI JSON tại `/v3/api-docs` và đặc tả tĩnh trong [`openapi.json`](openapi.json).
+**Mã nguồn:** https://github.com/trung-2012/hotel-booking-system
+**Phiên bản kiểm thử (baseline):** `4d9e6b6` (PR #8)
+**API:** [openapi.json](openapi.json) · Swagger UI khi chạy: `http://localhost:8081/swagger-ui/index.html`
 
-Bài toán đặt ra là xây dựng một dịch vụ backend cho phép người dùng xem danh sách phòng trống, tạo đơn đặt phòng theo khoảng thời gian, xem lịch sử đặt phòng cá nhân và hủy đơn khi không còn nhu cầu.
+## 1. Bài toán và nghiệp vụ
 
-Yêu cầu quan trọng nhất là tách biệt dữ liệu giữa các tài khoản và xử lý xung đột lịch đặt phòng (Overbooking). Người dùng chỉ được thao tác trên đơn đặt phòng của mình. Ví dụ, tài khoản A tạo một đơn đặt phòng thì tài khoản B không thể xem hay xóa đơn đó, kể cả khi biết ID (hệ thống sẽ trả về lỗi `404 Not Found`).
+Xây dựng REST API quản lý phòng khách sạn và đặt phòng qua JSON. Khách có thể đăng ký, đăng nhập, xem phòng và quản lý **đơn đặt phòng của chính mình**; quản trị viên (`ADMIN`) được tạo/xóa phòng.
 
----
+- **Xác thực:** đăng ký email và mật khẩu (tối thiểu 6 ký tự, lưu bằng BCrypt); đăng nhập nhận JWT Bearer Token.
+- **Đặt phòng:** chọn `roomId`, `checkInDate`, `checkOutDate`; ngày nhận không ở quá khứ, ngày trả phải sau ngày nhận. `totalPrice = giá phòng × số đêm`.
+- **Chống trùng lịch:** không cho hai đơn của cùng phòng giao nhau về thời gian. Được phép nhận phòng đúng ngày khách trước trả phòng.
+- **Bảo vệ dữ liệu:** chỉ chủ đơn được xem/hủy đơn; người khác truy cập bằng ID nhận `404 Not Found`.
 
-## Phạm vi nghiệp vụ
+**Vấn đề còn tồn tại:** kiểm tra lịch trùng và thao tác lưu chưa có khóa giao dịch bảo đảm an toàn khi hai yêu cầu đến đồng thời. Một số lỗi phòng không tồn tại đang bị trả về `500` thay vì `404`; khóa ký JWT còn nằm trong mã nguồn. Đây là các hướng cần xem xét ở Pha 2.
 
-- Đăng ký bằng email và mật khẩu; email không phân biệt hoa thường, không trùng lặp.
-- Đăng nhập nhận Bearer Token (JWT).
-- Xem danh sách phòng, xem chi tiết thông tin từng phòng.
-- Tạo đơn đặt phòng (`POST`), xem chi tiết đơn (`GET`), xem danh sách đơn đã đặt (`GET`) và hủy đơn đặt phòng (`DELETE`).
-- Kiểm tra trùng lịch: Không cho phép đặt trùng phòng trong cùng khoảng thời gian (`check_in_date` đến `check_out_date`). (chx thực hiện)
-- Sắp xếp danh sách đơn đặt phòng theo ID giảm dần (mới nhất xếp trước).
-- Truy cập đơn đặt phòng của người khác trả về lỗi `404 Not Found` (tránh lộ sự tồn tại của dữ liệu).
-- Pha 1 chưa hỗ trợ thanh toán trực tuyến, đổi lịch, mã giảm giá hay tự động làm mới token (Refresh Token).
-
----
-
-## Kiến trúc phân tầng (Layered Architecture)
+## 2. Kiến trúc và tổ chức mã nguồn
 
 ```text
-HTTP / JSON (Presentation: Controller, DTO, JWT Filter)
-       ↓
-Nghiệp vụ (Domain: BookingService, RoomService, Pure Java Models, Interfaces)
-       ↓ (Thông qua các Repository Interfaces)
-Truy cập dữ liệu (Infrastructure: Spring Data JPA, Entity, Database)
-       ↓
-Spring Data JPA (Hibernate) → PostgreSQL / H2 Database
+HTTP/JSON → Controller (+ DTO, @Valid, JWT Filter)
+          → Service (quy tắc đặt phòng, tính tiền, kiểm tra quyền)
+          → Repository (Spring Data JPA) → PostgreSQL
 ```
----
-## Chạy cục bộ (Local Development)
 
-Yêu cầu Java 17+ và Maven 3.8+. Từ thư mục gốc dự án:
+```text
+src/main/java/com/group/booking/
+├── controller/       # AuthController, RoomController, BookingController
+├── dto/request/      # DTO đầu vào + Bean Validation
+├── dto/response/     # DTO đầu ra
+├── service/          # BookingService, RoomService
+├── repository/       # BookingRepository, RoomRepository, UserRepository
+├── model/            # User, Room, Booking, Role
+├── security/         # JwtFilter, JwtUtil
+├── config/           # SecurityConfig
+└── exception/        # Xử lý lỗi API
+```
+
+**Công nghệ:** Java 17 (mục tiêu build), Spring Boot 3.3.4, Spring MVC, Spring Security/JWT, BCrypt, Spring Data JPA/Hibernate, PostgreSQL, Maven, Docker, Springdoc OpenAPI, k6. Cấu trúc hiện tại là **Layered Architecture**; Service vẫn phụ thuộc trực tiếp vào Spring Data repository.
+
+## 3. Xây dựng, chạy và triển khai
+
+Cần **Java 17+**, **Maven 3.8+** và Docker Desktop/Compose. Từ thư mục dự án:
 
 ```bash
-# 1. Clone dự án và truy cập thư mục
-git clone https://github.com/trung-2012/hotel-booking-system
+git clone https://github.com/trung-2012/hotel-booking-system.git
 cd hotel-booking-system
-
-# 2. Thiết lập biến môi trường
-export JWT_SECRET="chuoi-bi-mat-ngau-nhien-it-nhat-32-ky-tu-cho-jwt"
-
-# 3. Build dự án
-mvn clean package -DskipTests
-
-# 4. Khởi chạy ứng dụng
-java -jar target/booking-system-1.0.0.jar
+docker compose up -d postgres-db
+mvn spring-boot:run
 ```
 
-*Trên Windows (PowerShell):*
-```powershell
-$env:JWT_SECRET="chuoi-bi-mat-ngau-nhien-it-nhat-32-ky-tu-cho-jwt"
-mvn clean package -DskipTests
-java -jar target/booking-system-1.0.0.jar
-```
+API chạy tại `http://localhost:8081`; PostgreSQL mặc định `localhost:5432/booking_db` (`myuser` / `mypassword` — **chỉ dùng môi trường học tập**). Nếu cổng `5432` của máy Windows đã bị chiếm, đổi cổng host trong Compose thành `5433:5432`, rồi thiết lập `$env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5433/booking_db"` ở PowerShell trước khi chạy Maven.
 
-Mặc định ứng dụng sử dụng CSDL H2 In-Memory chạy trên port `8080`. Bạn có thể cấu hình chuyển sang PostgreSQL bằng cách đặt `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, và `SPRING_DATASOURCE_PASSWORD`. Biến `JWT_SECRET` bắt buộc phải có độ dài tối thiểu 32 ký tự.
+**Đóng gói:** `mvn clean package -DskipTests` tạo `target/booking-0.0.1-SNAPSHOT.jar`; chạy bằng `java -jar target/booking-0.0.1-SNAPSHOT.jar`. Có thể xây dựng image với `docker build -t hotel-booking-api .`, nhưng `docker-compose.yml` hiện **chỉ chạy PostgreSQL**: muốn chạy cả backend trong container phải cung cấp kết nối DB qua mạng Docker và ánh xạ cổng `8081`. `Dockerfile` hiện khai báo `EXPOSE 8080` chưa đồng bộ với cổng ứng dụng `8081`.
 
----
+## 4. Đặc tả REST API
 
-## Đóng gói & Chạy bằng Docker
+**Đặc tả đầy đủ có thể preview:** [**openapi.json**](openapi.json) (OpenAPI 3); JSON do ứng dụng sinh tại `http://localhost:8081/v3/api-docs`.
 
-```bash
-# Build Docker image
-docker build -t hotel-booking-api .
+| Method | Endpoint | Quyền | Nghiệp vụ |
+|---|---|---|---|
+| POST | `/api/auth/register` | Public | Đăng ký |
+| POST | `/api/auth/login` | Public | Đăng nhập, trả JWT |
+| GET | `/api/rooms` | Public | Danh sách phòng |
+| GET | `/api/rooms/{id}` | Public | Chi tiết phòng |
+| POST | `/api/rooms` | ADMIN | Tạo phòng |
+| DELETE | `/api/rooms/{id}` | ADMIN | Xóa phòng |
+| POST | `/api/bookings` | JWT | Tạo đơn |
+| GET | `/api/bookings/me` | JWT | Danh sách đơn của tôi |
+| GET | `/api/bookings/{id}` | JWT, chủ đơn | Chi tiết đơn |
+| DELETE | `/api/bookings/{id}` | JWT, chủ đơn | Hủy đơn (`204`) |
 
-# Chạy container độc lập
-docker run --rm -p 8080:8080 \
-  -e JWT_SECRET="chuoi-bi-mat-ngau-nhien-it-nhat-32-ky-tu-cho-jwt" \
-  hotel-booking-api
-```
+Ví dụ **POST `/api/bookings`**: `{"roomId":1,"checkInDate":"2027-01-10","checkOutDate":"2027-01-12"}`. Phản hồi gồm `id`, `roomId`, `roomNumber`, `checkInDate`, `checkOutDate`, `totalPrice` (camelCase). Lỗi kiểm tra dữ liệu / đặt trùng trả `400` với dạng `{"error":"..."}`. Các endpoint được bảo vệ sử dụng header `Authorization: Bearer <token>`.
 
-Hoặc sử dụng **Docker Compose** (kèm PostgreSQL):
+## 5. Kiểm thử và Kaggle CPU Baseline
 
-```bash
-docker compose up -d --build
-```
+**Chức năng đã kiểm thử thủ công:** đăng ký/đăng nhập; tạo/xem/hủy đơn; tính tổng tiền; ngăn đặt trùng toàn bộ/một phần; cho phép lịch tiếp nối; chặn xem/hủy đơn của tài khoản khác (`404`); chặn ngày thiếu, ngày quá khứ, ngày không hợp lệ (`400`). `mvn compile`: **BUILD SUCCESS**.
 
-Mở trình duyệt truy cập Swagger UI: `http://localhost:8080/swagger-ui/index.html`.
+**Baseline Pha 1:** Kaggle Notebook **4 CPU cores**, Accelerator `None`; OpenJDK 21, PostgreSQL 16, k6 v2.2.0; backend và công cụ tạo tải trên **cùng máy**. Script: [`scripts/k6-load-test.js`](scripts/k6-load-test.js), **10 VUs / 30 giây**, luồng **tạo → xem → hủy**; kiểm thử trên commit `4d9e6b6`.
 
----
+| Chỉ số | Kết quả |
+|---|---:|
+| HTTP requests / iterations | **850 / 283** |
+| Throughput | **27.30 req/s** |
+| Trung bình / p95 | **24.07 / 73.62 ms** |
+| HTTP failure rate | **0/850 (0.00%)** |
+| Checks | **1.134/1.134 (100%)** |
+| Ngưỡng k6 | **PASS** (`p95 < 1000ms`, lỗi `< 5%`) |
 
-## Đặc tả Endpoint (API Specification)
+**Bằng chứng:** Kaggle Notebook đã lưu Version #1 và gói `phase1_kaggle_baseline.zip` gồm log, JSON kết quả, mô tả môi trường, báo cáo tóm tắt (lưu riêng). Kết quả này **chỉ là baseline Pha 1**, không phải bằng chứng cải thiện so với Windows hay bảo đảm xử lý an toàn các yêu cầu đặt trùng đồng thời. Pha 2 cần đo trước/sau trên môi trường, cấu hình tải và dữ liệu so sánh tương đương.
 
-Tất cả Request Body đều sử dụng `Content-Type: application/json`. Các endpoint yêu cầu bảo mật phải kèm Header `Authorization: Bearer <access_token>`.
-
-## 🔌 Đặc tả Endpoint (API Specification)
-
-### Authentication & User
-| Method | Đường dẫn | Auth | Nội dung |
-| :--- | :--- | :--- | :--- |
-| **POST** | `/api/auth/register` | Public | Đăng ký tài khoản mới |
-| **POST** | `/api/auth/login` | Public | Đăng nhập, trả về JWT Token |
-| **GET** | `/api/auth/me` | Bearer Token | Lấy thông tin user hiện tại |
-
-### Room Management
-| Method | Đường dẫn | Auth | Nội dung |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/api/rooms` | Public | Lấy danh sách tất cả các phòng |
-| **GET** | `/api/rooms/{id}` | Public | Lấy chi tiết 1 phòng |
-| **POST** | `/api/rooms` | Bearer Token (Admin) | Thêm phòng mới |
-| **DELETE** | `/api/rooms/{id}` | Bearer Token (Admin) | Xóa phòng theo id |
-
-### Booking Management
-| Method | Đường dẫn | Auth | Nội dung |
-| :--- | :--- | :--- | :--- |
-| **POST** | `/api/bookings` | Bearer Token | Đặt phòng mới |
-| **GET** | `/api/bookings/me` | Bearer Token | Xem lịch sử đặt phòng của bản thân |
-| **GET** | `/api/bookings/{id}` | Bearer Token | Xem chi tiết một đơn đặt phòng |
-| **DELETE** | `/api/bookings/{id}` | Bearer Token | Hủy đơn đặt phòng |
-### Cấu trúc một đối tượng Booking JSON
-```json
-{
-  "id": 10,
-  "user_id": 1,
-  "room_id": 101,
-  "room_number": "P.302",
-  "check_in_date": "2026-11-01",
-  "check_out_date": "2026-11-04",
-  "total_price": 1500000.0,
-  "status": "CONFIRMED",
-  "created_at": "2026-10-15T07:00:00Z"
-}
-```
-
-Thời gian `created_at` là UTC. Lỗi nghiệp vụ trả về dạng `{"detail":"..."}`.
-
----
-
-## Kiểm thử & Benchmark trên Kaggle CPU
-
-### 1. Kiểm thử Unit/Integration Test
-```bash
-mvn test
-```
-
-### 2. Kịch bản Benchmark trên Kaggle CPU
-1. Tạo một Kaggle Notebook mới với phần cứng **CPU (Accelerator: None)**.
-2. Upload file JAR đã build hoặc kéo mã nguồn từ GitHub về Notebook.
-3. Khởi động ứng dụng backend dưới dạng tiến trình ngầm:
-   ```python
-   import subprocess, os
-   env = {**os.environ, "JWT_SECRET": "secret-key-super-secure-32-characters-min"}
-   subprocess.Popen(["java", "-jar", "app.jar"], env=env)
-   ```
-4. Cài đặt công cụ k6 hoặc Locust trên Python Notebook:
-   ```bash
-   pip install locust
-   ```
-5. Chạy file script test tải `benchmark.py` với các mức luồng đồng thời tăng dần:
-   - `--concurrency 1` (Đơn luồng)
-   - `--concurrency 4` (Tải nhẹ)
-   - `--concurrency 8` (Tải cao trên Kaggle CPU)
-6. Script sẽ tự động đăng ký tài khoản test, sau đó lặp lại luồng: `POST (Đặt phòng)` $\rightarrow$ `GET (Xem danh sách đơn)` $\rightarrow$ `DELETE (Hủy đơn)`.
-7. Ghi lại các thông số: Throughput (RPS), độ trễ p50/p95 và tỷ lệ lỗi HTTP để phục vụ báo cáo So sánh cho Pha 2.
-
----
-
-## Kế hoạch Cải tiến ở Pha 2
-...
----
-*Dự án phục vụ mục đích học tập môn Kiến trúc Phần mềm.*
+*Đồ án học tập môn Kiến trúc Phần mềm — Pha 1.*
