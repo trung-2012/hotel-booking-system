@@ -3,6 +3,7 @@ package com.group.booking.security;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -11,7 +12,8 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    private String secret = "day-la-chuoi-bi-mat-rat-dai-de-tao-ra-token-jwt-cho-he-thong-dat-phong-cua-nhom-kien-truc";
+    @Value("${jwt.secret}")
+    private String secret;
 
     private long expiration = 86400000;
 
