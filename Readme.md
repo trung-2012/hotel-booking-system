@@ -6,16 +6,19 @@
 
 ## 1. Bài toán và nghiệp vụ
 
-Xây dựng REST API quản lý phòng khách sạn và đặt phòng qua JSON. Khách có thể đăng ký, đăng nhập, xem phòng và quản lý **đơn đặt phòng của chính mình**; quản trị viên (`ADMIN`) được tạo/xóa phòng.
+Xây dựng hệ thống đặt phòng khách sạn qua json. Khách có thể đăng ký, đăng nhập, xem và quản lý đơn đặt phòng của mình; Quản trị viên được tạo/xóa phòng.
 
+Các tính năng chính bao gồm:
 - **Xác thực:** đăng ký email và mật khẩu (tối thiểu 6 ký tự, lưu bằng BCrypt); đăng nhập nhận JWT Bearer Token.
+- **Tạo phòng:** đảm báo chỉ có ADMIN được phép tạo/xóa phòng; ADMIN do bản thân hệ thống cấp quyền
 - **Đặt phòng:** chọn `roomId`, `checkInDate`, `checkOutDate`; ngày nhận không ở quá khứ, ngày trả phải sau ngày nhận. `totalPrice = giá phòng × số đêm`.
 - **Chống trùng lịch:** không cho hai đơn của cùng phòng giao nhau về thời gian. Được phép nhận phòng đúng ngày khách trước trả phòng.
 - **Bảo vệ dữ liệu:** chỉ chủ đơn được xem/hủy đơn; người khác truy cập bằng ID nhận `404 Not Found`.
-
-**Vấn đề còn tồn tại:** kiểm tra lịch trùng và thao tác lưu chưa có khóa giao dịch bảo đảm an toàn khi hai yêu cầu đến đồng thời. Một số lỗi phòng không tồn tại đang bị trả về `500` thay vì `404`; khóa ký JWT còn nằm trong mã nguồn. Đây là các hướng cần xem xét ở Pha 2.
+- **Khóa dữ liệu:** đảm bảo rằng không xảy ra việc 2 phòng đặt cùng 1 thời điểm và trùng thời gian gẫy lỗi database.
 
 ## 2. Kiến trúc và tổ chức mã nguồn
+
+Hệ thống được xây dựng theo kiến trúc phần mềm Detabase -> Service -> Controller, cụ thể:
 
 ```text
 HTTP/JSON → Controller (+ DTO, @Valid, JWT Filter)
@@ -40,7 +43,8 @@ src/main/java/com/group/booking/
 
 ## 3. Xây dựng, chạy và triển khai
 
-Cần **Java 17+**, **Maven 3.8+** và Docker Desktop/Compose. Từ thư mục dự án:
+Yêu cầu người dùng: có **Java 17+**, **Maven 3.8+** và Docker Desktop/Compose. 
+Thao tác cụ thể (từ terminal thư mục dự án):
 
 ```bash
 git clone https://github.com/trung-2012/hotel-booking-system.git
@@ -93,10 +97,21 @@ Ví dụ **POST `/api/bookings`**: `{"roomId":1,"checkInDate":"2027-01-10","chec
 
 Mặc dù hệ thống đã chạy ổn định, đáp ứng đầy đủ nghiệp vụ cốt lõi và vượt qua bài kiểm thử tải, một số điểm kỹ thuật cần tiếp tục tối ưu trong Pha 2:
 
-1. **Race Condition (Đặt trùng trong cùng 1 mili-giây):**
-   Hiện tại, logic kiểm tra trùng lịch (Overbooking) hoạt động tốt ở mức độ tuần tự. Tuy nhiên, nếu 2 request tạo đơn gửi lên server cùng một thời điểm, có thể xảy ra tranh chấp dữ liệu (cả 2 đều đọc thấy phòng trống và cùng lưu thành công). Ở Pha 2, cần bổ sung `@Transactional` kết hợp `Pessimistic Locking` (Khóa bi quan) ở tầng Database để đảm bảo tính nguyên tử (Atomicity) khi đặt phòng đồng thời.
+1. **Chuyển đổi từ Pessimistic Lock sang Optimistic Lock:**
+    - *Hiện tại:* Để chống Race Condition, hệ thống dùng `PESSIMISTIC_WRITE` (Khóa bi quan) ở tầng Database. Cơ chế này đảm bảo an toàn tuyệt đối nhưng sẽ khiến các request khác phải **xếp hàng chờ (Blocking)** nếu có quá nhiều người cùng đặt một phòng.
+    - *Hướng Pha 2:* Chuyển sang `OPTIMISTIC` (Khóa lạc quan) sử dụng annotation `@Version`. Khi có tranh chấp, hệ thống sẽ ném ra `OptimisticLockException` và Frontend/Client có thể tự động Retry (thử lại) mà không làm nghẽn toàn bộ hệ thống.
 
-2. **Bảo mật JWT:**
-   Khóa ký JWT (`secret`) hiện đang được hardcode trong file `JwtUtil.java`. Để chuẩn bị cho môi trường Production, cần đưa khóa này vào biến môi trường (Environment Variables) hoặc file cấu hình bảo mật, tránh lộ lộ mã nguồn.
+2. **Vấn đề N+1 Query (Hiệu năng Database):**
+    - *Hiện tại:* Khi gọi API `GET /api/bookings/me`, Hibernate đang thực hiện 1 câu query lấy danh sách Booking, sau đó thực hiện thêm N câu query để lấy thông tin Room cho từng Booking (Lỗi kinh điển N+1 của JPA).
+    - *Hướng Pha 2:* Sử dụng `@EntityGraph` hoặc câu lệnh `JOIN FETCH` trong JPQL để gom lại thành 1 câu query duy nhất, giảm tải cho Database.
 
+3. **Thiếu Phân trang (Pagination) cho API danh sách:**
+    - *Hiện tại:* API `GET /api/rooms` đang dùng `findAll()`. Nếu khách sạn có 10.000 phòng, server sẽ trả về toàn bộ 10.000 bản ghi trong 1 request, gây tràn RAM và chậm mạng.
+    - *Hướng Pha 2:* Áp dụng `Pageable` của Spring Data JPA để phân trang (VD: `GET /api/rooms?page=0&size=10`).
+
+4. **Chưa có Caching và Docker hóa toàn diện:**
+    - *Hiện tại:* API tìm phòng trống (`/api/rooms/search`) liên tục truy vấn vào Database. Docker mới chỉ chạy PostgreSQL mà chưa đóng gói ứng dụng Spring Boot.
+    - *Hướng Pha 2:*
+        + Tích hợp **Redis Cache** cho các API ít thay đổi (như danh sách phòng) để giảm tải cho PostgreSQL.
+        + Viết `Dockerfile` cho Spring Boot và cấu hình `docker-compose` chạy song song cả App lẫn Database, giúp deploy bằng 1 câu lệnh duy nhất.
 *Đồ án học tập môn Kiến trúc Phần mềm — Pha 1.*
