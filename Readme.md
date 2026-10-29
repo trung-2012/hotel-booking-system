@@ -89,4 +89,14 @@ Ví dụ **POST `/api/bookings`**: `{"roomId":1,"checkInDate":"2027-01-10","chec
 
 **Bằng chứng:** Kaggle Notebook đã lưu Version #1 và gói `phase1_kaggle_baseline.zip` gồm log, JSON kết quả, mô tả môi trường, báo cáo tóm tắt (lưu riêng). Kết quả này **chỉ là baseline Pha 1**, không phải bằng chứng cải thiện so với Windows hay bảo đảm xử lý an toàn các yêu cầu đặt trùng đồng thời. Pha 2 cần đo trước/sau trên môi trường, cấu hình tải và dữ liệu so sánh tương đương.
 
+## 7. Hạn chế hiện tại & Hướng phát triển (Pha 2)
+
+Mặc dù hệ thống đã chạy ổn định, đáp ứng đầy đủ nghiệp vụ cốt lõi và vượt qua bài kiểm thử tải, một số điểm kỹ thuật cần tiếp tục tối ưu trong Pha 2:
+
+1. **Race Condition (Đặt trùng trong cùng 1 mili-giây):**
+   Hiện tại, logic kiểm tra trùng lịch (Overbooking) hoạt động tốt ở mức độ tuần tự. Tuy nhiên, nếu 2 request tạo đơn gửi lên server cùng một thời điểm, có thể xảy ra tranh chấp dữ liệu (cả 2 đều đọc thấy phòng trống và cùng lưu thành công). Ở Pha 2, cần bổ sung `@Transactional` kết hợp `Pessimistic Locking` (Khóa bi quan) ở tầng Database để đảm bảo tính nguyên tử (Atomicity) khi đặt phòng đồng thời.
+
+2. **Bảo mật JWT:**
+   Khóa ký JWT (`secret`) hiện đang được hardcode trong file `JwtUtil.java`. Để chuẩn bị cho môi trường Production, cần đưa khóa này vào biến môi trường (Environment Variables) hoặc file cấu hình bảo mật, tránh lộ lộ mã nguồn.
+
 *Đồ án học tập môn Kiến trúc Phần mềm — Pha 1.*
