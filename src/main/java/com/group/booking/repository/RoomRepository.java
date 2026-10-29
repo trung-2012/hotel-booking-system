@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface RoomRepository extends JpaRepository<Room, Long> {
     boolean existsByRoomNumber(String roomNumber);  // check trùng số phòng
 
