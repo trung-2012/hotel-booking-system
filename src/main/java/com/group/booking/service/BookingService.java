@@ -9,6 +9,7 @@ import com.group.booking.repository.BookingRepository;
 import com.group.booking.repository.RoomRepository;
 import com.group.booking.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.group.booking.exception.BookingNotFoundException;
 
 import java.time.temporal.ChronoUnit;
@@ -30,6 +31,7 @@ public class BookingService {
         this.userRepository = userRepository;
     }
 
+    @Transactional 
     public BookingResponseDTO createBooking(
             String email,
             BookingRequestDTO request) {
@@ -37,7 +39,7 @@ public class BookingService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Room room = roomRepository.findById(request.getRoomId())
+        Room room = roomRepository.findByIdWithLock(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Room not found"));
 
         if (request.getCheckInDate() == null ||
@@ -106,18 +108,17 @@ public class BookingService {
         return response;
     }
 
-    // Get booking details (GET /api/bookings/{id})
     public BookingResponseDTO getBookingById(String email, Long bookingId) {
         Booking booking = findOwnedBooking(email, bookingId);
         return toResponseDTO(booking);
     }
 
-    // Cancel booking (DELETE /api/bookings/{id})
     public void cancelBooking(String email, Long bookingId) {
         Booking booking = findOwnedBooking(email, bookingId);
         bookingRepository.delete(booking);
     }
-        private Booking findOwnedBooking(String email, Long bookingId) {
+    
+    private Booking findOwnedBooking(String email, Long bookingId) {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(BookingNotFoundException::new);
@@ -127,6 +128,5 @@ public class BookingService {
         }
 
         return booking;
-        }
-
+    }
 }
